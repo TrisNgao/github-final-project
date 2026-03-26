@@ -1,161 +1,175 @@
 const express = require('express');
-const axios = require('axios'); // Required for Tasks 10-13 implementation
 let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
 
-// =========================================================
-// TASK 6: REGISTER A NEW USER
-// =========================================================
+const doesExist = (username)=>{
+  let userswithsamename = users.filter((user)=>{
+    return user.username === username
+  });
+  if(userswithsamename.length > 0){
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
 public_users.post("/register", (req,res) => {
   const username = req.body.username;
   const password = req.body.password;
-
-  // Check if both username and password are provided
   if (username && password) {
-    if (!isValid(username)) {
-      // Add new user to the users array
+    if (!doesExist(username)) { 
       users.push({"username":username,"password":password});
       return res.status(200).json({message: "User successfully registred. Now you can login"});
     } else {
       return res.status(404).json({message: "User already exists!"});
     }
-  }
+  } 
   return res.status(404).json({message: "Unable to register user."});
 });
 
+// Get the book list available in the shop
+//public_users.get('/',function (req, res) {
+ // res.send(JSON.stringify(books,null,4));
+//});
 
-// =========================================================
-// TASK 1: GET ALL BOOKS (Standard Implementation)
-// =========================================================
-public_users.get('/', function (req, res) {
-    return res.status(200).send(JSON.stringify(books, null, 4));
-});
+// Get book details based on ISBN
+// public_users.get('/isbn/:isbn',function (req, res) {
+  // const ISBN = req.params.isbn;
+  // res.send(books[ISBN])
+ // });
+  
+// Get book details based on author
+//public_users.get('/author/:author',function (req, res) {
+  //let ans = []
+    //for(const [key, values] of Object.entries(books)){
+      //  const book = Object.entries(values);
+        //for(let i = 0; i < book.length ; i++){
+          //  if(book[i][0] == 'author' && book[i][1] == req.params.author){
+            //    ans.push(books[key]);
+            //}
+        //}
+    //}
+    //if(ans.length == 0){
+      //  return res.status(300).json({message: "Author not found"});
+   // }
+   // res.send(ans);
+//});
 
-// =========================================================
-// TASK 2: GET BOOK DETAILS BY ISBN
-// =========================================================
-public_users.get('/isbn/:isbn', function (req, res) {
-  const isbn = req.params.isbn;
-  if(books[isbn]){
-      return res.status(200).json(books[isbn]);
-  } else {
-      return res.status(404).json({message: "Book not found"});
-  }
-});
+// Get all books based on title
+// public_users.get('/title/:title',function (req, res) {
+//   let ans = []
+//   for(const [key, values] of Object.entries(books)){
+//       const book = Object.entries(values);
+//       for(let i = 0; i < book.length ; i++){
+//           if(book[i][0] == 'title' && book[i][1] == req.params.title){
+//               ans.push(books[key]);
+//           }
+//       }
+//   }
+//   if(ans.length == 0){
+//       return res.status(300).json({message: "No book correspond to this title"});
+//   }
+//   res.send(ans);
+// });
 
-// =========================================================
-// TASK 3: GET BOOK DETAILS BY AUTHOR
-// =========================================================
-public_users.get('/author/:author', function (req, res) {
-  const author = req.params.author;
-  let authorBooks =[];
-  for (let isbn in books) {
-      if (books[isbn].author === author) {
-          authorBooks.push(books[isbn]);
-      }
-  }
-  if(authorBooks.length > 0){
-      return res.status(200).json(authorBooks);
-  } else {
-      return res.status(404).json({message: "Author not found"});
-  }
-});
-
-// =========================================================
-// TASK 4: GET BOOK DETAILS BY TITLE
-// =========================================================
-public_users.get('/title/:title', function (req, res) {
-  const title = req.params.title;
-  let titleBooks =[];
-  for (let isbn in books) {
-      if (books[isbn].title === title) {
-          titleBooks.push(books[isbn]);
-      }
-  }
-  if(titleBooks.length > 0){
-      return res.status(200).json(titleBooks);
-  } else {
-      return res.status(404).json({message: "Title not found"});
-  }
-});
-
-// =========================================================
-// TASK 5: GET BOOK REVIEW
-// =========================================================
+//  Get book review
 public_users.get('/review/:isbn',function (req, res) {
-  const isbn = req.params.isbn;
-  if(books[isbn]){
-      return res.status(200).json(books[isbn].reviews);
-  } else {
-      return res.status(404).json({message: "Book not found"});
-  }
+  const ISBN = req.params.isbn;
+  res.send(books[ISBN].reviews)
 });
 
+// Task 10 : Get the book list available in the shop / Function
+function getBookList(){
+  return new Promise((resolve,reject)=>{
+    resolve(books);
+  })
+}
 
-// ************************************************************************
-// ************************************************************************
-// TASKS 10 TO 13: AXIOS & PROMISES / ASYNC-AWAIT IMPLEMENTATION
-// Note for Reviewer: Below are the implementations using Axios and Promises
-// to fetch data from the endpoints created above.
-// ************************************************************************
-// ************************************************************************
+// Get the book list available in the shop
+public_users.get('/',function (req, res) {
+  getBookList().then(
+    (book)=>res.send(JSON.stringify(book, null, 4))
+  );  
+});
 
-const API_BASE_URL = "http://localhost:5000";
+// Task 11: Get book details based on ISBN / Function
+function getFromISBN(isbn){
+  let book = books[isbn];  
+  return new Promise((resolve,reject)=>{
+    if (book) {
+      resolve(book);
+    }else{
+      reject("There is no book corresponding to isbn: " + isbn);
+    }    
+  })
+}
 
-// ---------------------------------------------------------
-// TASK 10: Get all books using Async/Await and Axios
-// ---------------------------------------------------------
-const getAllBooksWithAxios = async () => {
-    try {
-        // Fetching all books from the root endpoint
-        const response = await axios.get(`${API_BASE_URL}/`);
-        console.log("Task 10 - All Books:", response.data);
-    } catch (error) {
-        console.error("Task 10 Error fetching all books:", error.message);
-    }
-};
+// Get book details based on ISBN
+public_users.get('/isbn/:isbn',function (req, res) {
+  const isbn = req.params.isbn;
+  getFromISBN(isbn).then(
+    (book)=>res.send(JSON.stringify(book, null, 4)),
+    (error) => res.send(error)
+  )
+ });
 
-// ---------------------------------------------------------
-// TASK 11: Search by ISBN using Promises and Axios
-// ---------------------------------------------------------
-const getBookByISBNWithAxios = (isbn) => {
-    // Using Promise chaining with Axios
-    axios.get(`${API_BASE_URL}/isbn/${isbn}`)
-        .then((response) => {
-            console.log(`Task 11 - Book with ISBN ${isbn}:`, response.data);
-        })
-        .catch((error) => {
-            console.error(`Task 11 Error fetching ISBN ${isbn}:`, error.response ? error.response.data : error.message);
-        });
-};
+// Task 12: Get book details based on author / Function
+function getFromAuthor(author) {
+    return new Promise((resolve) => {
+      let output = [];
+      for (var isbn in books) {
+        let book = books[isbn];
+        if (book.author === author) {
+          output.push(book);
+        }
+      }
+      if (output.length > 0) {
+        resolve(output);
+      } else {
+        resolve({ message: "There is no book corresponding to the author: " + author });
+      }
+    });
+  }
+  
+  
+// Get book details based on author
+public_users.get('/author/:author',function (req, res) {
+  const author = req.params.author;
+  getFromAuthor(author)
+  .then(
+    result =>res.send(JSON.stringify(result, null, 4))
+  );
+});
 
-// ---------------------------------------------------------
-// TASK 12: Search by Author using Async/Await and Axios
-// ---------------------------------------------------------
-const getBookByAuthorWithAxios = async (author) => {
-    try {
-        // Fetching books by specific author
-        const response = await axios.get(`${API_BASE_URL}/author/${author}`);
-        console.log(`Task 12 - Books by ${author}:`, response.data);
-    } catch (error) {
-        console.error(`Task 12 Error fetching author ${author}:`, error.message);
-    }
-};
+// Task 13: Get all books based on title / Function
+function getFromTitle(title) {
+    return new Promise((resolve) => {
+      let output = [];
+      for (var isbn in books) {
+        let book = books[isbn];
+        if (book.title === title) {
+          output.push(book);
+        }
+      }
+      if (output.length > 0) {
+        resolve(output);
+      } else {
+        resolve({ message: "There is no book corresponding to the title: " + title });
+      }
+    });
+  }
+  
 
-// ---------------------------------------------------------
-// TASK 13: Search by Title using Promises and Axios
-// ---------------------------------------------------------
-const getBookByTitleWithAxios = (title) => {
-    // Using Promise chaining with Axios
-    axios.get(`${API_BASE_URL}/title/${title}`)
-        .then((response) => {
-            console.log(`Task 13 - Books with title ${title}:`, response.data);
-        })
-        .catch((error) => {
-            console.error(`Task 13 Error fetching title ${title}:`, error.response ? error.response.data : error.message);
-        });
-};
+// Get all books based on title
+public_users.get('/title/:title',function (req, res) {
+  const title = req.params.title;
+  getFromTitle(title)
+  .then(
+    result =>res.send(JSON.stringify(result, null, 4))
+  );
+});
 
 module.exports.general = public_users;
